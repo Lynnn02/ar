@@ -1,98 +1,154 @@
-const https = require('https');
-const http = require('http');
-const fs = require('fs');
+const express = require('express');
 const path = require('path');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-const PORT = 5000;
-const HTTPS_PORT = 8443;
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'text/javascript',
-  '.json': 'application/json',
-  '.glb': 'model/gltf-binary',
-  '.gltf': 'model/gltf+json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
-};
-
-// Request handler function
-function handleRequest(req, res) {
-  console.log(`Request received: ${req.method} ${req.url}`);
-  
-  // Add CORS headers for AR.js
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  // Handle the root path
-  let filePath = req.url === '/' 
-    ? path.join(__dirname, 'index.html') 
-    : path.join(__dirname, req.url);
-
-  // Get the file extension
-  const extname = path.extname(filePath);
-  
-  // Set the content type based on the file extension
-  const contentType = MIME_TYPES[extname] || 'application/octet-stream';
-  
-  // Read the file
-  fs.readFile(filePath, (error, content) => {
-    if (error) {
-      if (error.code === 'ENOENT') {
-        // File not found
-        console.error(`File not found: ${filePath}`);
-        res.writeHead(404, { 'Content-Type': 'text/html' });
-        res.end('<h1>404 Not Found</h1><p>The requested resource could not be found.</p>');
-      } else {
-        // Server error
-        console.error(`Server error: ${error.code}`);
-        res.writeHead(500, { 'Content-Type': 'text/html' });
-        res.end('<h1>500 Internal Server Error</h1><p>Sorry, something went wrong on the server.</p>');
-      }
+// Middleware for HTTPS redirect in production
+app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https' && process.env.NODE_ENV === 'production') {
+        res.redirect(`https://${req.header('host')}${req.url}`);
     } else {
-      // Success
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
-      console.log(`Served ${filePath} as ${contentType}`);
+        next();
     }
-  });
-}
-
-// Create HTTP server
-const server = http.createServer(handleRequest);
-
-// Create HTTPS server with self-signed certificate
-let httpsServer;
-try {
-  // Try to create HTTPS server (will work if you have certificates)
-  const options = {
-    key: fs.readFileSync('key.pem', 'utf8'),
-    cert: fs.readFileSync('cert.pem', 'utf8')
-  };
-  httpsServer = https.createServer(options, handleRequest);
-} catch (err) {
-  console.log('HTTPS certificates not found. Creating self-signed certificates...');
-  // We'll create a simple HTTP server that redirects to HTTPS when deployed
-}
-
-server.listen(PORT, () => {
-  console.log(`HTTP Server running at http://localhost:${PORT}/`);
-  console.log(`Press Ctrl+C to stop the server`);
 });
 
-// Start HTTPS server if certificates are available
-if (httpsServer) {
-  httpsServer.listen(HTTPS_PORT, () => {
-    console.log(`HTTPS Server running at https://localhost:${HTTPS_PORT}/`);
-    console.log(`Use HTTPS for camera access on mobile devices`);
-  });
-} else {
-  console.log('\n⚠️  IMPORTANT: For camera access on mobile devices, you need HTTPS.');
-  console.log('When you deploy this, make sure to use a service that provides HTTPS.');
-  console.log('For local testing, you can use ngrok or similar tools to create HTTPS tunnel.');
-}
+// Security headers for AR functionality
+app.use((req, res, next) => {
+    // Required for camera access
+    res.setHeader('Permissions-Policy', 'camera=*, microphone=*, geolocation=*');
+    
+    // Required for AR.js and WebXR
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    
+    // Security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    
+    next();
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname), {
+    setHeaders: (res, path) => {
+        // Set proper MIME types for GLB files
+        if (path.endsWith('.glb')) {
+            res.setHeader('Content-Type', 'model/gltf-binary');
+        }
+        // Enable CORS for all files
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+}));
+
+// Routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/ar', (req, res) => {
+    res.sendFile(path.join(__dirname, 'ar-viewer.html'));
+});
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Handle 404
+app.use((req, res) => {
+    res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>404 - Page Not Found</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 50px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    min-height: 100vh;
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                }
+                .container {
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 40px;
+                    border-radius: 20px;
+                    backdrop-filter: blur(10px);
+                }
+                h1 { font-size: 4em; margin: 0; }
+                p { font-size: 1.2em; margin: 20px 0; }
+                a {
+                    color: white;
+                    text-decoration: none;
+                    background: rgba(255, 255, 255, 0.2);
+                    padding: 10px 20px;
+                    border-radius: 10px;
+                    display: inline-block;
+                    margin-top: 20px;
+                    transition: all 0.3s ease;
+                }
+                a:hover {
+                    background: rgba(255, 255, 255, 0.3);
+                    transform: translateY(-2px);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>404</h1>
+                <p>Page not found</p>
+                <a href="/">← Back to AR Viewer</a>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// Error handling
+app.use((error, req, res, next) => {
+    console.error('Server error:', error);
+    res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 AR Server running on port ${PORT}`);
+    console.log(`📱 Open http://localhost:${PORT} on your mobile device`);
+    console.log(`🔒 Make sure to serve over HTTPS in production for camera access`);
+    
+    // Log system info
+    console.log('\n📊 System Info:');
+    console.log(`   Node.js: ${process.version}`);
+    console.log(`   Platform: ${process.platform}`);
+    console.log(`   Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🛑 Received SIGTERM, shutting down gracefully');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 Received SIGINT, shutting down gracefully');
+    process.exit(0);
+});
+
+module.exports = app;
