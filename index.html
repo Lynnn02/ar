@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AR AC Training Unit</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-orbit-controls@1.3.0/dist/aframe-orbit-controls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-text-geometry-component@^0.5.0/dist/aframe-text-geometry-component.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Selection Screen - This should be displayed first -->
+  <div id="selection-screen" class="screen active">
+    <div class="container">
+      <h1>AR AC Training Unit</h1>
+      <p>Select a module to view</p>
+      <div class="button-container">
+        <button onclick="loadModel('model.glb')">Normal Airflow</button>
+        <button onclick="loadModel('acc4.glb')">Faulty Airflow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AR/3D View Screen - Hidden initially -->
+  <div id="ar-screen" class="screen">
+    <!-- Top Module Navigation -->
+    <div class="module-navigation">
+      <button id="airflow-module" class="module-button active">Airflow Module</button>
+      <button id="problem-module" class="module-button">Problem Module</button>
+    </div>
+    
+    <!-- Color Code Legend (only shown in normal airflow module) -->
+    <div id="color-legend" class="color-legend">
+      <div class="legend-title">Color-coded arrows:</div>
+      <div class="legend-item">
+        <span class="color-dot red"></span>
+        <span class="legend-text">Red arrows: Hot, high-pressure gas</span>
+      </div>
+      <div class="legend-item">
+        <span class="color-dot blue"></span>
+        <span class="legend-text">Blue arrows: Cool, low-pressure gas</span>
+      </div>
+      <div class="legend-item">
+        <span class="color-dot orange"></span>
+        <span class="legend-text">Orange arrows: Medium pressure (liquid before expansion)</span>
+      </div>
+    </div>
+    
+    <!-- Fault Selection Panel (only shown in problem module) -->
+    <div id="fault-panel" class="fault-panel hidden">
+      <div class="panel-title">Pilih Masalah (Select Fault):</div>
+      <div class="fault-buttons">
+        <button class="fault-button active" data-fault="condenser_blocked">Condenser Tersumbat / Kotor</button>
+        <button class="fault-button" data-fault="compressor_failure">Compressor Tidak Berfungsi</button>
+        <button class="fault-button" data-fault="expansion_valve_blocked">Expansion Valve (TXV) Tersumbat</button>
+        <button class="fault-button" data-fault="low_refrigerant">Refrigerant Terlalu Rendah</button>
+        <button class="fault-button" data-fault="frozen_evaporator">Evaporator Beku</button>
+      </div>
+    </div>
+    
+    <!-- Problem Overlay (for faulty model) -->
+    <div id="problem-overlay" class="problem-overlay hidden">
+      <div id="problem-title" class="problem-title">Masalah: Kondenser Tersumbat / Kotor</div>
+      <div id="problem-effect" class="problem-detail">Kesan: Tekanan dalam sistem naik terlalu tinggi -> risiko meletup atau bocor. Udara yang keluar tidak cukup sejuk, beban kerja pada compressor bertambah -> lebih cepat rosak.</div>
+      <div id="problem-simulation" class="problem-detail">Simulasi: Haba bertambah di Condenser</div>
+      <div id="problem-description" class="problem-description">Apa yang berlaku: Haba dari refrigerant tidak dapat dibuang. Gas panas dari compressor tidak dapat menjadi cecair sepenuhnya.</div>
+    </div>
+
+    <!-- Components Info Panel -->
+    <div id="component-info" class="component-info hidden">
+      <div class="component-title">Komponen Terlibat</div>
+      <div id="component-details"></div>
+    </div>
+
+    <!-- Step Instructions Panel -->
+    <div id="step-instructions" class="step-instructions hidden">
+      <div class="step-title">Langkah 1: Compressor</div>
+      <div id="step-details">
+        <p class="bm-text">✓ Menyedut refrigerant dalam bentuk gas bertekanan rendah.</p>
+        <p class="bm-text">✓ Memampatkan gas tersebut menjadi gas tekanan tinggi dan bersuhu tinggi.</p>
+        <p class="eng-text hidden">✓ Sucks refrigerant in low-pressure gas form.</p>
+        <p class="eng-text hidden">✓ Compresses the gas into high-pressure, high-temperature gas.</p>
+      </div>
+    </div>
+
+    <!-- Language Toggle and Back Button -->
+    <div class="bottom-controls">
+      <button id="back-button" onclick="goBack()">Back</button>
+      <div class="language-toggle">
+        <button id="bm-toggle" class="lang-button active">BM</button>
+        <button id="eng-toggle" class="lang-button">ENG</button>
+      </div>
+    </div>
+    
+    <!-- A-Frame Scene -->
+    <a-scene embedded renderer="antialias: true; logarithmicDepthBuffer: true;" 
+             vr-mode-ui="enabled: false"
+             loading-screen="enabled: true; dotsColor: white; backgroundColor: #0af"
+             arjs="sourceType: webcam; debugUIEnabled: false;">
+      <a-assets>
+        <a-asset-item id="model-asset" src=""></a-asset-item>
+        
+        <!-- Arrow Models -->
+        <a-asset-item id="arrow-model" src="https://cdn.jsdelivr.net/gh/n5ro/aframe-extras@v6.1.1/examples/assets/arrow.gltf"></a-asset-item>
+      </a-assets>
+
+      <!-- Model container with better default position -->
+      <a-entity id="model-container" position="0 0 -3">
+        <a-entity id="model" position="0 0 0" scale="1 1 1"></a-entity>
+        
+        <!-- Component Labels -->
+        <a-entity id="labels-container">
+          <!-- Labels will be added dynamically via JavaScript -->
+        </a-entity>
+        
+        <!-- Airflow Arrows -->
+        <a-entity id="arrows-container">
+          <!-- Arrows will be added dynamically via JavaScript -->
+        </a-entity>
+      </a-entity>
+
+      <!-- Camera rig with improved controls -->
+      <a-entity id="camera-rig" position="0 0 0">
+        <a-camera id="camera" position="0 1.6 0" 
+                 look-controls="enabled: true; touchEnabled: true" 
+                 raycaster="objects: .clickable; far: 100" 
+                 cursor="rayOrigin: mouse; fuse: false"
+                 orbit-controls="
+                   autoRotate: false;
+                   target: 0 0 -3;
+                   enableDamping: true;
+                   dampingFactor: 0.25;
+                   rotateSpeed: 0.25;
+                   minDistance: 1;
+                   maxDistance: 10;
+                   enablePan: true;
+                   panSpeed: 0.5;
+                 ">
+        </a-camera>
+      </a-entity>
+
+      <!-- Lighting for better visibility -->
+      <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="1 1 -1"></a-entity>
+      
+      <!-- Simple environment for better context -->
+      <a-sky color="#ECECEC"></a-sky>
+    </a-scene>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
