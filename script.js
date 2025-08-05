@@ -274,11 +274,19 @@ function applyModelToScene(modelFile) {
     
     // Set model scale and position based on which model is loaded
     if (modelFile === 'model.glb') {
-      model.setAttribute('scale', '1 1 1');
+      model.setAttribute('scale', '0.5 0.5 0.5');
       model.setAttribute('position', '0 0 0');
+      // Set to normal airflow module
+      CONFIG.currentModule = 'airflow';
+      document.getElementById('airflow-module').classList.add('active');
+      document.getElementById('problem-module').classList.remove('active');
     } else if (modelFile === 'acc4.glb') {
-      model.setAttribute('scale', '1 1 1'); 
+      model.setAttribute('scale', '0.5 0.5 0.5'); 
       model.setAttribute('position', '0 0 0');
+      // Set to problem module
+      CONFIG.currentModule = 'problem';
+      document.getElementById('airflow-module').classList.remove('active');
+      document.getElementById('problem-module').classList.add('active');
     }
     
     // Mark as loaded
@@ -288,12 +296,25 @@ function applyModelToScene(modelFile) {
     // Setup components and labels
     setupComponentLabels();
     
-    // Create airflow arrows
-    createAirflowArrows(modelFile === 'model.glb' ? 'normal' : 'faulty');
+    // Create airflow arrows based on model type
+    if (modelFile === 'model.glb') {
+      createAirflowArrows('normal');
+      // Show normal UI elements
+      document.getElementById('color-legend').classList.remove('hidden');
+      document.getElementById('fault-panel').classList.add('hidden');
+      document.getElementById('problem-overlay').classList.add('hidden');
+      showComponentInfo('compressor'); // Show first component by default
+    } else {
+      createAirflowArrows('faulty');
+      // Show problem UI elements
+      document.getElementById('color-legend').classList.add('hidden');
+      document.getElementById('fault-panel').classList.remove('hidden');
+      document.getElementById('problem-overlay').classList.remove('hidden');
+      showFault('condenser_blocked'); // Show condenser blockage by default
+    }
     
-    // Update UI
+    // Update UI language
     updateUILanguage();
-    showComponentInfo('compressor'); // Show first component by default
   }, 300);
 }
 
@@ -476,6 +497,20 @@ function updateUILanguage() {
   if (CONFIG.currentComponent) {
     showComponentInfo(CONFIG.currentComponent);
   }
+  
+  // Update fault info if one is selected
+  if (CONFIG.currentFault) {
+    showFault(CONFIG.currentFault);
+  }
+  
+  // Update fault button labels
+  const faultButtons = document.querySelectorAll('.fault-button');
+  faultButtons.forEach(button => {
+    const faultId = button.getAttribute('data-fault');
+    if (faultId && CONFIG.faults[faultId]) {
+      button.textContent = CONFIG.faults[faultId].title[CONFIG.currentLanguage];
+    }
+  });
   
   // Toggle text visibility based on language
   const bmTexts = document.querySelectorAll('.bm-text');
