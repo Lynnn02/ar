@@ -2,80 +2,97 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>AR Viewer</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         
         .ar-controls {
             position: fixed;
-            bottom: 20px;
+            bottom: env(safe-area-inset-bottom, 20px);
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 15px;
+            gap: 10px;
             z-index: 1000;
+            padding: 0 20px;
         }
         
         .control-btn {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: none;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
             color: #333;
             font-weight: bold;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        .control-btn:hover {
-            background: white;
-            transform: scale(1.1);
+        .control-btn:active {
+            background: #f0f0f0;
+            transform: scale(0.95);
         }
         
         .close-btn {
             position: fixed;
-            top: 20px;
+            top: env(safe-area-inset-top, 20px);
             right: 20px;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: none;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
             z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .close-btn:active {
+            background: #f0f0f0;
+            transform: scale(0.95);
         }
         
         .info-panel {
             position: fixed;
-            top: 20px;
+            top: env(safe-area-inset-top, 60px);
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            max-width: 250px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 200px;
             z-index: 1000;
+            backdrop-filter: blur(5px);
         }
         
         .loading {
@@ -83,13 +100,15 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 20px;
             border-radius: 10px;
-            font-size: 18px;
+            font-size: 16px;
             z-index: 1001;
             text-align: center;
+            max-width: 280px;
+            backdrop-filter: blur(5px);
         }
         
         .hidden {
@@ -137,64 +156,47 @@
     <a-scene
         id="ar-scene"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true;"
-        gesture-detector
+        renderer="logarithmicDepthBuffer: true;"
         loading-screen="enabled: false">
         
         <a-assets>
-            <a-asset-item id="normal-model" src="./model.glb" crossorigin="anonymous"></a-asset-item>
-            <a-asset-item id="faulty-model" src="./acc4.glb" crossorigin="anonymous"></a-asset-item>
+            <a-asset-item id="normal-model" src="./model.glb"></a-asset-item>
+            <a-asset-item id="faulty-model" src="./acc4.glb"></a-asset-item>
         </a-assets>
         
         <a-camera
-            id="camera"
             look-controls="enabled: false"
-            arjs-look-controls="smoothingFactor: 0.1"
-            wasd-controls="enabled: false">
+            arjs-look-controls="smoothingFactor: 0.1">
         </a-camera>
         
-        <!-- Marker-based fallback -->
-        <a-marker preset="hiro" id="marker">
-            <a-entity
-                id="model-entity"
-                gltf-model=""
-                position="0 0.5 0"
-                scale="1 1 1"
-                rotation="-90 0 0"
-                gesture-handler="minScale: 0.1; maxScale: 3"
-                animation-mixer
-                visible="true">
-            </a-entity>
-        </a-marker>
-        
-        <!-- Markerless entity -->
+        <!-- Simple markerless AR -->
         <a-entity
-            id="markerless-entity"
+            id="model-entity"
             gltf-model=""
-            position="0 0 -2"
-            scale="0.8 0.8 0.8"
+            position="0 0 -1.5"
+            scale="2 2 2"
             rotation="0 0 0"
-            gesture-handler="minScale: 0.1; maxScale: 3"
             animation-mixer
-            visible="false">
+            visible="true">
         </a-entity>
         
+        <!-- Ground reference -->
         <a-plane
             id="ground"
-            position="0 -0.5 -2"
+            position="0 -0.5 -1.5"
             rotation="-90 0 0"
-            width="4"
-            height="4"
+            width="2"
+            height="2"
             color="#7BC8A4"
             opacity="0.3"
-            visible="false">
+            visible="true">
         </a-plane>
         
-        <!-- Lighting -->
-        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-        <a-light type="directional" position="1 1 1" color="#ffffff" intensity="0.5"></a-light>
+        <!-- Better lighting -->
+        <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+        <a-light type="directional" position="0 1 0" color="#ffffff" intensity="0.8"></a-light>
     </a-scene>
     
     <div class="ar-controls">
@@ -206,12 +208,10 @@
     <script>
         let currentModel = 'normal';
         let modelEntity;
-        let markerlessEntity;
         let groundPlane;
         let infoPanel;
-        let isGroundVisible = false;
+        let isGroundVisible = true;
         let isInfoVisible = false;
-        let useMarkerless = false;
         
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -220,7 +220,6 @@
         // Initialize AR scene
         document.addEventListener('DOMContentLoaded', function() {
             modelEntity = document.getElementById('model-entity');
-            markerlessEntity = document.getElementById('markerless-entity');
             groundPlane = document.getElementById('ground');
             infoPanel = document.getElementById('info-panel');
             
@@ -232,66 +231,37 @@
             // Update info panel
             updateModelInfo();
             
-            // Check for marker detection
-            const marker = document.getElementById('marker');
-            marker.addEventListener('markerFound', function() {
-                console.log('Marker found - using marker-based AR');
-                useMarkerless = false;
-                modelEntity.setAttribute('visible', true);
-                markerlessEntity.setAttribute('visible', false);
-            });
-            
-            marker.addEventListener('markerLost', function() {
-                console.log('Marker lost - switching to markerless');
-                useMarkerless = true;
-                modelEntity.setAttribute('visible', false);
-                markerlessEntity.setAttribute('visible', true);
-            });
-            
             // Hide loading after scene is ready
             setTimeout(() => {
                 document.getElementById('loading').classList.add('hidden');
-                infoPanel.classList.remove('hidden');
-                isInfoVisible = true;
-                
-                // Default to markerless if no marker detected
-                if (!useMarkerless) {
-                    console.log('No marker detected - using markerless AR');
-                    useMarkerless = true;
-                    modelEntity.setAttribute('visible', false);
-                    markerlessEntity.setAttribute('visible', true);
+                if (infoPanel) {
+                    infoPanel.classList.remove('hidden');
+                    isInfoVisible = true;
                 }
-            }, 5000);
+            }, 3000);
         });
         
         function loadModel(modelType) {
             const modelSrc = modelType === 'normal' ? '#normal-model' : '#faulty-model';
             console.log('Loading model:', modelSrc);
             
-            // Load model for both entities
             if (modelEntity) {
                 modelEntity.setAttribute('gltf-model', modelSrc);
-                console.log('Model loaded for marker entity');
-            }
-            if (markerlessEntity) {
-                markerlessEntity.setAttribute('gltf-model', modelSrc);
-                console.log('Model loaded for markerless entity');
+                
+                // Add model load event listeners
+                modelEntity.addEventListener('model-loaded', function() {
+                    console.log('Model loaded successfully:', modelType);
+                    modelEntity.setAttribute('visible', true);
+                });
+                
+                modelEntity.addEventListener('model-error', function(error) {
+                    console.error('Model failed to load:', error);
+                    // Try to make it visible anyway in case it's a false error
+                    modelEntity.setAttribute('visible', true);
+                });
             }
             
             currentModel = modelType;
-            
-            // Add model load event listeners
-            const checkModelLoad = (entity, name) => {
-                entity.addEventListener('model-loaded', function() {
-                    console.log(`${name} model loaded successfully`);
-                });
-                entity.addEventListener('model-error', function(error) {
-                    console.error(`${name} model failed to load:`, error);
-                });
-            };
-            
-            if (modelEntity) checkModelLoad(modelEntity, 'Marker');
-            if (markerlessEntity) checkModelLoad(markerlessEntity, 'Markerless');
         }
         
         function updateModelInfo() {
@@ -303,16 +273,11 @@
         }
         
         function resetModel() {
-            if (useMarkerless && markerlessEntity) {
-                markerlessEntity.setAttribute('position', '0 0 -2');
-                markerlessEntity.setAttribute('rotation', '0 0 0');
-                markerlessEntity.setAttribute('scale', '0.8 0.8 0.8');
-                console.log('Reset markerless model');
-            } else if (modelEntity) {
-                modelEntity.setAttribute('position', '0 0.5 0');
-                modelEntity.setAttribute('rotation', '-90 0 0');
-                modelEntity.setAttribute('scale', '1 1 1');
-                console.log('Reset marker model');
+            if (modelEntity) {
+                modelEntity.setAttribute('position', '0 0 -1.5');
+                modelEntity.setAttribute('rotation', '0 0 0');
+                modelEntity.setAttribute('scale', '2 2 2');
+                console.log('Reset model position');
             }
         }
         
