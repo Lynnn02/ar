@@ -104,7 +104,7 @@
              renderer="antialias: true; logarithmicDepthBuffer: true;" 
              vr-mode-ui="enabled: false"
              loading-screen="enabled: true; dotsColor: white; backgroundColor: #0af"
-             arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth:1280; sourceHeight:960; displayWidth: 1280; displayHeight: 960;"
+             arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
              gesture-detector
              id="scene">
       <a-assets>
@@ -115,10 +115,10 @@
       </a-assets>
 
       <!-- Model container with AR positioning -->
-      <a-marker preset="hiro" id="marker-hiro">
+      <a-marker type="barcode" value="0" id="marker-barcode">
         <a-entity id="model-container" position="0 0 0" rotation="-90 0 0">
-          <a-entity id="model" position="0 0 0" scale="0.5 0.5 0.5" 
-                   gesture-handler="minScale: 0.25; maxScale: 10"
+          <a-entity id="model" position="0 0 0" scale="0.3 0.3 0.3" 
+                   gesture-handler="minScale: 0.1; maxScale: 5"
                    animation-mixer></a-entity>
           
           <!-- Component Labels -->
@@ -133,25 +133,8 @@
         </a-entity>
       </a-marker>
 
-      <!-- Camera rig with improved controls -->
-      <a-entity id="camera-rig" position="0 0 0">
-        <a-camera id="camera" position="0 1.6 0" 
-                 look-controls="enabled: true; touchEnabled: true" 
-                 raycaster="objects: .clickable; far: 100" 
-                 cursor="rayOrigin: mouse; fuse: false"
-                 orbit-controls="
-                   autoRotate: false;
-                   target: 0 0 -3;
-                   enableDamping: true;
-                   dampingFactor: 0.25;
-                   rotateSpeed: 0.25;
-                   minDistance: 1;
-                   maxDistance: 10;
-                   enablePan: true;
-                   panSpeed: 0.5;
-                 ">
-        </a-camera>
-      </a-entity>
+      <!-- Camera for AR -->
+      <a-entity camera></a-entity>
 
       <!-- Lighting for better visibility -->
       <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>

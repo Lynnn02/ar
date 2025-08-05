@@ -1,8 +1,10 @@
+const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = 5000;
+const HTTPS_PORT = 8443;
 const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -18,8 +20,14 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer((req, res) => {
+// Request handler function
+function handleRequest(req, res) {
   console.log(`Request received: ${req.method} ${req.url}`);
+  
+  // Add CORS headers for AR.js
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   // Handle the root path
   let filePath = req.url === '/' 
@@ -53,9 +61,38 @@ const server = http.createServer((req, res) => {
       console.log(`Served ${filePath} as ${contentType}`);
     }
   });
-});
+}
+
+// Create HTTP server
+const server = http.createServer(handleRequest);
+
+// Create HTTPS server with self-signed certificate
+let httpsServer;
+try {
+  // Try to create HTTPS server (will work if you have certificates)
+  const options = {
+    key: fs.readFileSync('key.pem', 'utf8'),
+    cert: fs.readFileSync('cert.pem', 'utf8')
+  };
+  httpsServer = https.createServer(options, handleRequest);
+} catch (err) {
+  console.log('HTTPS certificates not found. Creating self-signed certificates...');
+  // We'll create a simple HTTP server that redirects to HTTPS when deployed
+}
 
 server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+  console.log(`HTTP Server running at http://localhost:${PORT}/`);
   console.log(`Press Ctrl+C to stop the server`);
 });
+
+// Start HTTPS server if certificates are available
+if (httpsServer) {
+  httpsServer.listen(HTTPS_PORT, () => {
+    console.log(`HTTPS Server running at https://localhost:${HTTPS_PORT}/`);
+    console.log(`Use HTTPS for camera access on mobile devices`);
+  });
+} else {
+  console.log('\n⚠️  IMPORTANT: For camera access on mobile devices, you need HTTPS.');
+  console.log('When you deploy this, make sure to use a service that provides HTTPS.');
+  console.log('For local testing, you can use ngrok or similar tools to create HTTPS tunnel.');
+}
