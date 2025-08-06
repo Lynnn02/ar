@@ -3,45 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Airflow AR Viewer</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Physical Training Unit Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <meta name="theme-color" content="#000000">
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --primary-color: #3b5fe0;
+            --secondary-color: #2dd4bf;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --light-color: #f8f9fa;
+            --dark-color: #1a202c;
+            --body-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --transition-fast: 150ms ease;
+            --transition-normal: 250ms ease;
+            --transition-slow: 350ms ease;
+            --footer-bg: #343a40;
+            --footer-text: #ffffff;
+        }
+
+        /* ===== CAR AC COMPONENTS PAGE DESIGN ===== */
+
+        /* Page Layout & Background */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0e0ff, #f0f0ff);
+            padding-top: 80px; /* For fixed header */
+        }
+
+        /* Header Section */
+        .dashboard-header {
+            background: linear-gradient(135deg, #2dd4bf, #3b5fe0);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dashboard-header::after {
+            content: '';
+            position: absolute;
+            bottom: -80px;
+            left: -80px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Section Divider */
+        .section-divider {
+            height: 4px;
+            width: 60px;
+            background: linear-gradient(90deg, #2dd4bf, #3b5fe0);
+            margin: 0 auto;
+            border-radius: 2px;
+        }
+
+        /* ===== 3D MODEL CARD DESIGN ===== */
+
+        /* Main Model Card Container */
+        .card {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: none;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 3D Model Container */
+        .model-container {
+            height: 400px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        }
+
+        /* Model Viewer Styles */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            --poster-color: transparent;
+            --progress-bar-height: 5px;
+            --progress-bar-color: #3b5fe0;
+            --progress-mask: linear-gradient(to right, #31877b, #3b5fe0);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            display: block;
+            width: 33%;
+            height: 10%;
+            max-height: 2%;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate3d(-50%, -50%, 0);
+            border-radius: 25px;
+            box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.25);
+            background-color: rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+        }
+
+        .progress-bar.hide {
+            visibility: hidden;
+            transition: visibility 0.3s;
+        }
+
+        .update-bar {
+            background-color: #3b5fe0;
+            width: 0%;
+            height: 100%;
+            border-radius: 25px;
+            float: left;
+            transition: width 0.3s;
+        }
+
+        /* ===== MODEL CONTROLS ===== */
+
+        .model-controls {
+            padding: 1.5rem 2rem;
+            background-color: #f8f9fa;
+            border-radius: 16px;
+            margin-top: 1rem;
+        }
+
+        /* Control Buttons */
+        .model-controls button {
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            border: 2px solid #e9ecef;
+            background: white;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .model-controls button:hover {
+            border-color: #3b5fe0;
+            color: #3b5fe0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 95, 224, 0.2);
+        }
+
+        /* AR Button Special Styling */
+        .ar-button, #viewAR, .ar-view-btn {
+            background: linear-gradient(135deg, #31877b, #3b5fe0) !important;
+            color: white !important;
+            border: none !important;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ar-button:hover, #viewAR:hover, .ar-view-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(49, 135, 123, 0.4);
+        }
+
+        .ar-button::before, #viewAR::before, .ar-view-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.5s ease;
+            z-index: 0;
+        }
+
+        .ar-button:hover::before, #viewAR:hover::before, .ar-view-btn:hover::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Control Button Styling */
+        .control-btn {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .control-btn:hover {
+            border-color: #3b5fe0;
+            color: #3b5fe0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 95, 224, 0.2);
+        }
+
+        .control-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* ===== COMPONENT CARDS GRID ===== */
+
+        .component-card, .simulation-card {
+            background-color: white;
+            border-radius: 20px;
+            padding: 2rem;
+            height: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+
+        .component-card:hover, .simulation-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .component-icon, .card-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(59, 95, 224, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: #3b5fe0;
+            transition: all 0.3s ease;
+        }
+
+        .component-card:hover .component-icon, .simulation-card:hover .card-icon {
+            background: linear-gradient(135deg, #2dd4bf, #3b5fe0);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .simulation-card.normal .card-icon {
+            color: #28a745;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(16, 185, 129, 0.2));
+        }
+
+        .simulation-card.faulty .card-icon {
+            color: #dc3545;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(239, 68, 68, 0.2));
+        }
+
+        .simulation-card.normal:hover .card-icon {
+            background: linear-gradient(135deg, #28a745, #10b981);
+            color: white;
+        }
+
+        .simulation-card.faulty:hover .card-icon {
+            background: linear-gradient(135deg, #dc3545, #ef4444);
+            color: white;
+        }
+
+        .simulation-card.normal.active {
+            background: rgba(40, 167, 69, 0.1);
+            border-color: #28a745;
+        }
+
+        .simulation-card.faulty.active {
+            background: rgba(220, 53, 69, 0.1);
+            border-color: #dc3545;
+        }
+
+        .component-card h3, .card-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            color: #333;
+        }
+
+        .component-card p, .card-description {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .footer {
+            background-color: var(--footer-bg);
+            color: var(--footer-text);
+            padding: 3rem 0 1.5rem;
+            margin-top: auto;
+        }
+
+        /* ===== MOBILE RESPONSIVENESS ===== */
+
+        @media (max-width: 768px) {
+            body {
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                padding-top: 56px !important;
+            }
+            
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .display-4 {
+                font-size: 1.75rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .display-5 {
+                font-size: 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .lead {
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+            }
+            
+            .section-divider {
+                margin-bottom: 1rem;
+                width: 40px;
+            }
+            
+            .card {
+                border-radius: 12px !important;
+            }
+            
+            .card-body {
+                padding: 0.75rem !important;
+            }
+            
+            .model-container {
+                height: 300px !important;
+            }
+            
+            .model-controls {
+                flex-direction: column;
+                gap: 10px;
+                padding: 0.75rem !important;
+            }
+            
+            .model-controls button {
+                width: 100%;
+                margin: 0.25rem 0 !important;
+                padding: 0.5rem !important;
+                font-size: 0.9rem !important;
+            }
+            
+            #viewAR, .ar-view-btn {
+                width: 100%;
+                margin-top: 10px !important;
+            }
+            
+            .component-card h3, .card-title {
+                font-size: 1rem !important;
+            }
+            
+            .component-card p, .card-description {
+                font-size: 0.85rem;
+                margin-bottom: 1rem !important;
+            }
+            
+            .component-card .btn {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .py-5 {
+                padding-top: 1.5rem !important;
+                padding-bottom: 1.5rem !important;
+            }
+            
+            .mt-5 {
+                margin-top: 2rem !important;
+            }
+            
+            .mb-5 {
+                margin-bottom: 2rem !important;
+            }
+
+            .control-buttons {
+                gap: 0.5rem;
+            }
+            
+            .control-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            .simulation-card {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .card-icon {
+                font-size: 1.5rem;
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* ===== ANIMATIONS ===== */
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Airflow AR Viewer</h1>
-            <p>Select an airflow model to view in AR</p>
-        </div>
-        
-        <div class="model-preview">
-            <div class="preview-container">
-                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xNTAgNTBMMTgwIDgwSDE2MFYxMjBIMTQwVjgwSDEyMEwxNTAgNTBaIiBmaWxsPSIjNjY2NjY2Ii8+CjxwYXRoIGQ9Ik0xMjAgMTMwSDE4MFYxNTBIMTIwVjEzMFoiIGZpbGw9IiM2NjY2NjYiLz4KPC9zdmc+" alt="Airflow Model Preview" />
+<body class="animate__animated animate__fadeIn">
+    <div class="container-fluid p-0 d-flex flex-column min-vh-100">
+        <!-- Header Section -->
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center mb-4" data-aos="fade-up" data-aos-duration="1000">
+                    <h1 class="display-4 fw-bold mb-3 text-white">Physical Training Unit Viewer</h1>
+                    <div class="section-divider mb-3 mx-auto"></div>
+                    <p class="lead text-white-50">Interactive 3D models - Rotate, zoom, and explore from every angle</p>
+                </div>
+            </div>
+            
+            <!-- 3D Model Card -->
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="model-card" data-aos="fade-up" data-aos-duration="800">
+                        <div class="model-container">
+                            <model-viewer 
+                                id="mainModelViewer"
+                                src="model.glb" 
+                                alt="Standard Physical Training Unit 3D Model" 
+                                camera-controls 
+                                auto-rotate
+                                camera-orbit="180deg 75deg 105%"
+                                shadow-intensity="1" 
+                                environment-image="neutral" 
+                                loading="eager"
+                                disable-zoom="false"
+                                disable-pan="false"
+                                touch-action="pan-y"
+                                interaction-prompt="none"
+                                style="width: 100%; height: 100%; background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
+                                <div class="progress-bar hide" slot="progress-bar">
+                                    <div class="update-bar"></div>
+                                </div>
+                            </model-viewer>
+                        </div>
+                        
+
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Cards -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-4 mb-3" data-aos="fade-up" data-aos-duration="800" data-aos-delay="200">
+                    <div class="simulation-card normal" onclick="switchModel('normal')">
+                        <div class="card-icon">✓</div>
+                        <h5 class="card-title">Standard Physical Training Unit</h5>
+                        <p class="card-description">Standard operation</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3" data-aos="fade-up" data-aos-duration="800" data-aos-delay="300">
+                    <div class="simulation-card faulty" onclick="switchModel('faulty')">
+                        <div class="card-icon">⚠</div>
+                        <h5 class="card-title">Fault Control Physical Training Unit</h5>
+                        <p class="card-description">Diagnostic mode</p>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="button-container">
-            <button class="ar-button normal" onclick="startAR('normal')">
-                <div class="button-icon">✓</div>
-                <div class="button-text">
-                    <h3>Normal Airflow</h3>
-                    <p>Standard operation model</p>
-                </div>
-            </button>
-            
-            <button class="ar-button faulty" onclick="startAR('faulty')">
-                <div class="button-icon">⚠</div>
-                <div class="button-text">
-                    <h3>Faulty Airflow</h3>
-                    <p>Diagnostic model</p>
-                </div>
-            </button>
-        </div>
-        
-        <div class="info">
-            <p>Point your camera at a flat surface to place the 3D model</p>
-        </div>
     </div>
-    
-    <script src="script.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+
+    <script>
+        // Initialize AOS animations
+        AOS.init();
+        
+        let currentModel = 'normal';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const modelViewer = document.getElementById('mainModelViewer');
+            
+            // Set initial camera position to face front
+            modelViewer.cameraOrbit = '180deg 75deg 105%';
+            
+            // Update active card styling
+            updateActiveCard();
+        });
+        
+        function switchModel(modelType) {
+            const modelViewer = document.getElementById('mainModelViewer');
+            
+            currentModel = modelType;
+            
+            if (modelType === 'normal') {
+                modelViewer.src = 'model.glb';
+            } else if (modelType === 'faulty') {
+                modelViewer.src = 'acc4.glb';
+            }
+            
+            // Reset camera position when switching models
+            setTimeout(() => {
+                modelViewer.cameraOrbit = '180deg 75deg 105%';
+            }, 100);
+            
+            updateActiveCard();
+        }
+        
+        function updateActiveCard() {
+            const cards = document.querySelectorAll('.simulation-card');
+            cards.forEach(card => {
+                card.classList.remove('active');
+                if ((currentModel === 'normal' && card.classList.contains('normal')) ||
+                    (currentModel === 'faulty' && card.classList.contains('faulty'))) {
+                    card.classList.add('active');
+                }
+            });
+        }
+    </script>
 </body>
 </html>

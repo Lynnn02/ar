@@ -12,15 +12,8 @@ app.use((req, res, next) => {
     }
 });
 
-// Security headers for AR functionality
+// Security headers
 app.use((req, res, next) => {
-    // Required for camera access
-    res.setHeader('Permissions-Policy', 'camera=*, microphone=*, geolocation=*');
-    
-    // Required for AR.js and WebXR
-    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    
     // Security headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -48,9 +41,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.get('/ar', (req, res) => {
-    res.sendFile(path.join(__dirname, 'ar-viewer.html'));
-});
+
 
 app.get('/health', (req, res) => {
     res.json({ 
@@ -110,7 +101,7 @@ app.use((req, res) => {
             <div class="container">
                 <h1>404</h1>
                 <p>Page not found</p>
-                <a href="/">← Back to AR Viewer</a>
+                <a href="/">← Back to 3D Viewer</a>
             </div>
         </body>
         </html>
@@ -128,9 +119,8 @@ app.use((error, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 AR Server running on port ${PORT}`);
-    console.log(`📱 Open http://localhost:${PORT} on your mobile device`);
-    console.log(`🔒 Make sure to serve over HTTPS in production for camera access`);
+    console.log(`🚀 3D Model Server running on port ${PORT}`);
+    console.log(`💻 Open http://localhost:${PORT} in your browser`);
     
     // Log system info
     console.log('\n📊 System Info:');
